@@ -327,10 +327,10 @@ async def handle_pdf(update: Update, context: CallbackContext):
 # Основная функция для запуска бота
 def main():
     # Загрузить переменные из .env файла
-    load_dotenv('BOT_TOKEN.env')
+    load_dotenv('.env')
 
     # Получить значение токена
-    token = os.getenv("BOT_TOKEN")
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
 
     # Проверьте, что токен загружен
     if not token:
