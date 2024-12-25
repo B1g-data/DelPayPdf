@@ -6,6 +6,7 @@ TARGET_DIR="/opt/DelPayPdf"
 ENV_FILE="${TARGET_DIR}/.env"
 CONTAINER_NAME="DelPayPdf"
 IMAGE_NAME="delpaypdf_image"
+TEMP_DIR="/opt/DelPayPdf/temp_files"
 
 # Функция проверки формата токена
 validate_token_format() {
@@ -26,6 +27,14 @@ if [ ! -d "$TARGET_DIR" ]; then
   mkdir -p "$TARGET_DIR"
 else
   echo "Папка $TARGET_DIR уже существует."
+fi
+
+# 1.1. Проверка наличия каталога и его создание, если отсутствует
+if [ ! -d "$TEMP_DIR" ]; then
+  echo "Папка $TEMP_DIR не существует. Создаём её..."
+  mkdir -p "$TEMP_DIR"
+else
+  echo "Папка $TEMP_DIR уже существует."
 fi
 
 # 2. Клонирование репозитория
