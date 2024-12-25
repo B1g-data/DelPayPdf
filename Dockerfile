@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Копируем только нужные файлы приложения
 COPY main.py /app/
 COPY images /app/images/
-COPY BOT_TOKEN.env /app/
+COPY .env /app/
 COPY temp_files /app/
 
 # Указываем команду для запуска бота
