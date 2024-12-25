@@ -5,7 +5,7 @@ REPO_URL="https://github.com/B1g-data/DelPayPdf.git"  # Замените на UR
 TARGET_DIR="/opt/DelPayPdf"
 ENV_FILE="${TARGET_DIR}/.env"
 CONTAINER_NAME="DelPayPdf"
-IMAGE_NAME="DelPayPdf_image"  # Имя Docker-образа
+IMAGE_NAME="delpaypdf_image"
 
 # Функция проверки формата токена
 validate_token_format() {
