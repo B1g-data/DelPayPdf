@@ -7,6 +7,48 @@ ENV_FILE="${TARGET_DIR}/.env"
 CONTAINER_NAME="DelPayPdf"
 IMAGE_NAME="DelPayPdf_image"  # Имя Docker-образа
 
+# Функция проверки формата ID пользователя
+validate_user_id() {
+  local user_id=$1
+  if [[ "$user_id" =~ ^[0-9]+$ ]] && [ "$user_id" -gt 0 ]; then
+    return 0  # ID корректен
+  else
+    return 1  # Неверный ID
+  fi
+}
+
+# Функция проверки существования пользователя через Telegram API
+validate_user_exists() {
+  local user_id=$1
+  response=$(curl -s "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getChat?chat_id=$user_id")
+  if [[ "$response" =~ "\"ok\":true" ]]; then
+    return 0  # Пользователь существует
+  else
+    return 1  # Пользователь не найден или ошибка
+  fi
+}
+
+# Функция проверки формата токена
+validate_token_format() {
+  local token=$1
+  if [[ "$token" =~ ^[0-9]{9,15}:[A-Za-z0-9_-]{35,45}$ ]]; then
+    return 0  # Токен соответствует формату
+  else
+    return 1  # Неверный формат
+  fi
+}
+
+# Функция проверки действительности токена через Telegram API
+validate_telegram_token() {
+  local token=$1
+  response=$(curl -s "https://api.telegram.org/bot$token/getMe")
+  if [[ "$response" =~ "\"ok\":true" ]]; then
+    return 0  # Токен действителен
+  else
+    return 1  # Токен неверный
+  fi
+}
+
 # 1. Проверка наличия каталога и его создание, если отсутствует
 if [ ! -d "$TARGET_DIR" ]; then
   echo "Папка $TARGET_DIR не существует. Создаём её..."
