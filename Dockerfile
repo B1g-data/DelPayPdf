@@ -1,9 +1,10 @@
-# Используем более легкий образ на основе Alpine
-FROM python:3.11-alpine
+# Используем официальный Python 3.11 образ на основе Debian
+FROM python:3.11-slim
 
-# Устанавливаем необходимые библиотеки и очищаем кэш apt для уменьшения объема
-RUN apk add --no-cache libmupdf-dev \
-    && pip install --no-cache-dir --upgrade pip
+# Устанавливаем необходимые библиотеки через apt
+RUN apt-get update && apt-get install -y \
+    libmupdf-dev \
+    && rm -rf /var/lib/apt/lists/*
 
 # Создаем директорию для приложения
 WORKDIR /app
