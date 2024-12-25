@@ -19,7 +19,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY main.py /app/
 COPY images /app/images/
 COPY .env /app/
-COPY temp_files /app/
+COPY temp_files /app/temp_files 
 
 # Указываем команду для запуска бота
 CMD ["python", "main.py"]
