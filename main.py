@@ -1,4 +1,3 @@
-import logging
 import fitz  # PyMuPDF
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
@@ -55,7 +54,6 @@ def s7(file_path, output_pdf, KEYWORD11, KEYWORD12):
                 text_instances2 = page.search_for(KEYWORD12)
 
                 if text_instances1 and text_instances2:
-                    logging.info(f"Найдены строки '{KEYWORD11}' и '{KEYWORD12}' на странице {page_number + 1}")
                     
                     for inst1 in text_instances1:
                         for inst2 in text_instances2:
@@ -67,18 +65,16 @@ def s7(file_path, output_pdf, KEYWORD11, KEYWORD12):
                                 # Закрашиваем область от верхнего-левого края первого ключевого слова до нижнего края второго (до границы страницы справа)
                                 rect_to_redact = fitz.Rect(x1-80, y1-15, page.rect.width, y2-30)
                                 page.draw_rect(rect_to_redact, color=(1, 1, 1), fill=1)
-                                logging.info(f"Закрашиваем область от {inst1} до {inst2}")
-                else:
-                    logging.info(f"Не найдены оба ключевых слова '{KEYWORD11}' и '{KEYWORD12}' на странице {page_number + 1}")
+
 
                 page_number += 1  # Переходим к следующей странице
 
             # Сохраняем изменения в новый файл PDF
             doc.save(output_pdf)  # Сохраняем результат в новый файл
-            logging.info(f"Результат сохранен в файл '{output_pdf}'")
+
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке PDF: {e}")
+        pass
 
 ################################################################################################################ S7
 
@@ -89,7 +85,6 @@ def agent(file_path, output_pdf, KEYWORD9, KEYWORD7, KEYWORD8, KEYWORD10):
     - Если на странице только KEYWORD9, удаляет эту страницу.
     - Закрашивает текст между KEYWORD7 и KEYWORD8.
     """
-    logging.basicConfig(level=logging.INFO)
     try:
         # Открываем PDF документ
         with fitz.open(file_path) as doc:
@@ -105,15 +100,13 @@ def agent(file_path, output_pdf, KEYWORD9, KEYWORD7, KEYWORD8, KEYWORD10):
 
                 if has_keyword9 and has_keyword10:
                     # Закрашиваем область от KEYWORD10 до конца страницы
-                    logging.info(f"На странице {page_index + 1} найдены '{KEYWORD9}' и '{KEYWORD10}'. Закрашиваем область от '{KEYWORD10}' до конца страницы.")
+ 
                     for start in page.search_for(KEYWORD10):
                         area = fitz.Rect(0, start.y1, page.rect.width, page.rect.height)
-                        logging.debug(f"Закрашиваем область: {area}")
                         page.draw_rect(area, color=(1, 1, 1), fill=1)
 
                 elif has_keyword9:
                     # Удаляем страницу, если только KEYWORD9
-                    logging.info(f"На странице {page_index + 1} найдено только '{KEYWORD9}'. Удаляем страницу.")
                     pages_to_delete.append(page_index)
 
                 # Поиск и закрашивание областей между KEYWORD7 и KEYWORD8
@@ -126,27 +119,22 @@ def agent(file_path, output_pdf, KEYWORD9, KEYWORD7, KEYWORD8, KEYWORD10):
                         y_end = end.y1
                         if y_start < y_end:
                             area = fitz.Rect(0, y_start + 3, page.rect.width, y_end)
-                            logging.debug(f"Закрашиваем область между '{KEYWORD7}' и '{KEYWORD8}': {area}")
                             page.draw_rect(area, color=(1, 1, 1), fill=1)
 
             # Удаление страниц
             if pages_to_delete:
-                logging.info(f"Удаляем страницы: {pages_to_delete}")
                 doc.delete_pages(pages_to_delete)
 
             # Сохранение результата
             doc.save(output_pdf)
-            logging.info(f"Результат сохранен в файл: {output_pdf}")
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке PDF: {e}")
+        pass
 
 
 ################################################################################################################ ТКП
 
-def tkp(file_path, output_pdf, KEYWORD1, KEYWORD2):
-    logging.basicConfig(level=logging.INFO)
-    
+def tkp(file_path, output_pdf, KEYWORD1, KEYWORD2):    
     try:
         with fitz.open(file_path) as doc:
             for page_number in range(doc.page_count):
@@ -157,7 +145,6 @@ def tkp(file_path, output_pdf, KEYWORD1, KEYWORD2):
                 text_instances2 = page.search_for(KEYWORD2)
 
                 if not text_instances1 or not text_instances2:
-                    logging.debug(f"Не найдены ключевые слова '{KEYWORD1}' или '{KEYWORD2}' на странице {page_number + 1}")
                     continue
 
                 # Закрашивание областей между найденными ключевыми словами
@@ -167,21 +154,17 @@ def tkp(file_path, output_pdf, KEYWORD1, KEYWORD2):
                 if y1 < y2:  # Проверяем корректность границ
                     rect_to_redact = fitz.Rect(0, y1 - 10, page.rect.width, y2 + 5)
                     page.draw_rect(rect_to_redact, color=(1, 1, 1), fill=1)
-                    logging.info(f"Закрашена область на странице {page_number + 1}: {rect_to_redact}")
 
             # Сохраняем изменения
             doc.save(output_pdf)
-            logging.info(f"Результат сохранен в файл: {output_pdf}")
     
     except Exception as e:
-        logging.error(f"Ошибка при обработке PDF: {e}")
-
+        pass
 
 ########################################################################################################################## Ваучер
 
 # Функция для поиска ключевых слов и удаления текста (закрашивания) между ними
 def vaucher(file_path, output_pdf, image_path, image_path2, KEYWORD3, KEYWORD4):
-    logging.basicConfig(level=logging.INFO)
 
     try:
         with fitz.open(file_path) as doc:
@@ -194,7 +177,6 @@ def vaucher(file_path, output_pdf, image_path, image_path2, KEYWORD3, KEYWORD4):
 
                 # Пропускаем страницу, если любое из ключевых слов не найдено
                 if not text_instances1 or not text_instances2:
-                    logging.debug(f"Не найдены ключевые слова '{KEYWORD3}' или '{KEYWORD4}' на странице {page_number + 1}")
                     continue
 
                 # Берем верхнюю границу первого ключевого слова и нижнюю второго
@@ -203,9 +185,6 @@ def vaucher(file_path, output_pdf, image_path, image_path2, KEYWORD3, KEYWORD4):
 
                 # Проверяем корректность границ
                 if y1 >= y2:
-                    logging.warning(
-                        f"Некорректные границы (y1={y1}, y2={y2}) на странице {page_number + 1}, пропускаем."
-                    )
                     continue
 
                 # Закрашивание области сверху страницы до первого ключевого слова
@@ -219,14 +198,11 @@ def vaucher(file_path, output_pdf, image_path, image_path2, KEYWORD3, KEYWORD4):
 
             # Сохранение документа
             doc.save(output_pdf)
-            logging.info(f"Результат сохранен в файл '{output_pdf}'")
     except Exception as e:
-        logging.error(f"Ошибка при обработке PDF: {e}")
-
+        pass
 ################################################################################################################ РЖД
 
 def rzd(file_path, output_pdf, KEYWORD5, KEYWORD6):
-    logging.basicConfig(level=logging.DEBUG)
     
     try:
         # Открытие PDF документа
@@ -238,7 +214,6 @@ def rzd(file_path, output_pdf, KEYWORD5, KEYWORD6):
 
                 # Проверяем наличие строки "Квитанция об оплате / Payment receipt"
                 if "Квитанция об оплате / Payment receipt" in page_text:
-                    logging.info(f"Текст 'Квитанция об оплате / Payment receipt' найден на странице {page_number + 1}. Удаляем страницу.")
                     doc.delete_page(page_number)  # Удаляем страницу
                     continue  # Переходим к следующей странице
 
@@ -247,7 +222,6 @@ def rzd(file_path, output_pdf, KEYWORD5, KEYWORD6):
                 text_instances2 = page.search_for(KEYWORD6)
 
                 if text_instances1 and text_instances2:
-                    logging.info(f"Найдены строки '{KEYWORD5}' и '{KEYWORD6}' на странице {page_number + 1}")
                     
                     for inst1 in text_instances1:
                         for inst2 in text_instances2:
@@ -259,23 +233,18 @@ def rzd(file_path, output_pdf, KEYWORD5, KEYWORD6):
                                 # Закрашиваем область от верхнего-левого края первого ключевого слова до нижнего края второго (до границы страницы справа)
                                 rect_to_redact = fitz.Rect(x1-22, y1-10, page.rect.width, y2)
                                 page.draw_rect(rect_to_redact, color=(1, 1, 1), fill=1)
-                                logging.info(f"Закрашиваем область от {inst1} до {inst2}")
-                else:
-                    logging.info(f"Не найдены оба ключевых слова '{KEYWORD5}' и '{KEYWORD6}' на странице {page_number + 1}")
 
                 page_number += 1  # Переходим к следующей странице
 
             # Сохраняем изменения в новый файл PDF
             doc.save(output_pdf)  # Сохраняем результат в новый файл
-            logging.info(f"Результат сохранен в файл '{output_pdf}'")
 
     except Exception as e:
-        logging.error(f"Ошибка при обработке PDF: {e}")
+        pass
     
 ################################################################################################################
 
 def find_keywords_in_pdf(file_path, output_pdf, keyword_actions):
-    logging.basicConfig(level=logging.DEBUG)
 
     try:
         with fitz.open(file_path) as doc:

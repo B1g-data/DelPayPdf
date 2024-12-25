@@ -1,25 +1,24 @@
-# Используем официальный Python 3.11 образ
-FROM python:3.11-slim
+# Используем более легкий образ на основе Alpine
+FROM python:3.11-alpine
 
-# Устанавливаем необходимые библиотеки
-RUN apt-get update && apt-get install -y \
-    libmupdf-dev \
-    && rm -rf /var/lib/apt/lists/*
+# Устанавливаем необходимые библиотеки и очищаем кэш apt для уменьшения объема
+RUN apk add --no-cache libmupdf-dev \
+    && pip install --no-cache-dir --upgrade pip
 
 # Создаем директорию для приложения
 WORKDIR /app
 
-# Копируем локальные файлы в контейнер
-COPY . /app
+# Копируем только необходимые файлы для установки зависимостей
+COPY requirements.txt /app/
 
 # Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем папку с изображениями в контейнер
+# Копируем только нужные файлы приложения
+COPY main.py /app/
 COPY images /app/images/
-
-# Копируем токен
 COPY BOT_TOKEN.env /app/
+COPY temp_files /app/
 
 # Указываем команду для запуска бота
-CMD ["python", "tkp-del-pay-0.6.py"]
+CMD ["python", "main.py"]
