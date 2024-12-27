@@ -5,6 +5,7 @@ import os
 import re
 import uuid
 from dotenv import load_dotenv
+import asyncio
 
 processing_flag = False #надо подумать, не внедрял, лучше перейти на очередь нормальную
 
@@ -85,7 +86,6 @@ def s7(file_path, output_pdf, KEYWORD11, KEYWORD12):
 - Если на странице только KEYWORD10, удаляет эту страницу.
 - Закрашивает текст между KEYWORD7 и KEYWORD8.
 """
-import fitz
 
 def agent(file_path, output_pdf, KEYWORD7, KEYWORD8, KEYWORD9, KEYWORD10):
     try:
@@ -135,7 +135,7 @@ def agent(file_path, output_pdf, KEYWORD7, KEYWORD8, KEYWORD9, KEYWORD10):
             doc.save(output_pdf, deflate=True)
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error in agent with file {file_path}: {e}")
 
 ################################################################################################################ ТКП
 
@@ -164,7 +164,7 @@ def tkp(file_path, output_pdf, KEYWORD1, KEYWORD2):
             doc.save(output_pdf, deflate=True)
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error in tkp with file {file_path}: {e}")
 
 
 ########################################################################################################################## Ваучер
@@ -202,11 +202,9 @@ def vaucher(file_path, output_pdf, image_path, image_path2, KEYWORD3, KEYWORD4):
             doc.save(output_pdf, deflate=True)
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error in vaucher with file {file_path}: {e}")
 
 ################################################################################################################ РЖД
-
-import fitz
 
 def rzd(file_path, output_pdf, KEYWORD5, KEYWORD6):
     try:
@@ -244,12 +242,11 @@ def rzd(file_path, output_pdf, KEYWORD5, KEYWORD6):
             doc.save(output_pdf, deflate=True)
 
     except Exception as e:
-        print(f"Error: {e}")
+        print(f"Error in rzd with file {file_path}: {e}")
     
 ################################################################################################################
 
 def find_keywords_in_pdf(file_path, output_pdf, keyword_actions):
-
     try:
         with fitz.open(file_path) as doc:
             print('Файл открыт')
@@ -286,43 +283,44 @@ async def start(update: Update, context: CallbackContext):
 
 # Обработчик получения PDF файла
 async def handle_pdf(update: Update, context: CallbackContext):
-
-    # Получаем файл от пользователя
-    file = update.message.document
-    file_id = file.file_id
-    file_name = re.sub(r'[^\w\-_\. ]', '_', file.file_name)
-    
-    # Проверяем MIME-тип файла
-    if file.mime_type != "application/pdf":
-        await update.message.reply_text("Пожалуйста, отправьте PDF файл.")
-        return
-    
-    # Загружаем файл
-    new_file = await context.bot.get_file(file_id)
-    file_path = f"temp_files/input_{uuid.uuid4().hex}_{file_name}"
-    await new_file.download_to_drive(file_path)
-    print(f"Сохраняем файл в: input_{file_name}'")
-
-    output_pdf = f'temp_files/{file_name}'
-    
-    # Выполняем обработку
     try:
+        # Получаем файл от пользователя
+        file = update.message.document
+        file_id = file.file_id
+        file_name = re.sub(r'[^\w\-_\. ]', '_', file.file_name)
+        
+        # Проверяем MIME-тип файла
+        if file.mime_type != "application/pdf":
+            await update.message.reply_text("Пожалуйста, отправьте PDF файл.")
+            return
+        
+        # Загружаем файл
+        new_file = await context.bot.get_file(file_id)
+        file_path = f"temp_files/input_{uuid.uuid4().hex}_{file_name}"
+        await new_file.download_to_drive(file_path)
+        print(f"Файл сохранён: {file_path}")
+
+        output_pdf = f'temp_files/{file_name}'
+        
+        # Выполняем обработку
         find_keywords_in_pdf(file_path, output_pdf, keyword_actions)
-        
-        
+
         # Отправляем результат пользователю
         with open(output_pdf, 'rb') as f:
             await update.message.reply_document(f, caption="")
 
-        # Удаляем временные файлы
-        f.close()
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        if os.path.exists(output_pdf):
-            os.remove(output_pdf)
-    
     except Exception as e:
-        await update.message.reply_text(f"Произошла ошибка при обработке файла: {e}")
+        await update.message.reply_text(f"Произошла ошибка при обработке файла: {e}. Возможно файл не поддерживается")
+
+    if os.path.exists('temp_files'):
+    # Очистка содержимого папки
+        for filename in os.listdir('temp_files'):
+            file_path = os.path.join('temp_files', filename)
+            try:
+                if os.path.isfile(file_path):
+                    os.remove(file_path)  # Удаляем файл
+            except:
+                break
 
 ################################################################################################################
 
