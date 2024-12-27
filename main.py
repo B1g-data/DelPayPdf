@@ -26,8 +26,10 @@ KEYWORD6="Вкл. НДС"
 # Мой Агент
 KEYWORD7 = "For more detailed information about the baggage"
 KEYWORD8 = "Passengers on a journey involving an ultimat"
-KEYWORD9 = "Payment receipt"
-KEYWORD10 = "End of itinerary receipt"
+KEYWORD9 = "End of itinerary receipt"
+KEYWORD10 = "Payment receipt"
+
+# S7
 KEYWORD11 = "Стоимость"
 KEYWORD12 = "Офис оформления"
 
@@ -36,211 +38,213 @@ keyword_actions = {
     "(itinerary/receipt)": lambda file_path, output_pdf: tkp(file_path, output_pdf, KEYWORD1, KEYWORD2), #ТКП
     "SERVICE CONFIRMATION VOUCHER": lambda file_path, output_pdf: vaucher(file_path, output_pdf, image_path, image_path2, KEYWORD3, KEYWORD4), #Ваучер
     "ЭЛЕКТРОННЫЙ БИЛЕТ. КОНТРОЛЬНЫЙ КУПОН": lambda file_path, output_pdf: rzd(file_path, output_pdf, KEYWORD5, KEYWORD6), #РЖД
-    "Мой Агент / My Agent": lambda file_path, output_pdf: agent(file_path, output_pdf, KEYWORD9, KEYWORD7, KEYWORD8, KEYWORD10), #МойАгент
+    "Мой Агент / My Agent": lambda file_path, output_pdf: agent(file_path, output_pdf, KEYWORD7, KEYWORD8, KEYWORD9, KEYWORD10), #МойАгент
     "Маршрутная квитанция": lambda file_path, output_pdf: s7(file_path, output_pdf, KEYWORD11, KEYWORD12), #S7
 }
 
-################################################################################################################ Мой Агент
+################################################################################################################ S7
+"""
+- Закрашивает текст между KEYWORD11 и KEYWORD12.
+"""
 def s7(file_path, output_pdf, KEYWORD11, KEYWORD12):
     try:
-        # Открытие PDF документа
         with fitz.open(file_path) as doc:
             page_number = 0
-            while page_number < doc.page_count:
-                page = doc.load_page(page_number)
+            for page_number in range(doc.page_count):  # Итерация по страницам документа
+                page = doc.load_page(page_number) # Загружаем страницу
 
-                # Ищем оба ключевых слова
-                text_instances1 = page.search_for(KEYWORD11)
-                text_instances2 = page.search_for(KEYWORD12)
+                # Ищем первое ключевое слово
+                text_instances0 = page.search_for(KEYWORD11)
 
-                if text_instances1 and text_instances2:
-                    
-                    for inst1 in text_instances1:
-                        for inst2 in text_instances2:
-                            # Если ключевые слова найдены, определяем их координаты
-                            x1, y1 = inst1.x1, inst1.y1
-                            x2, y2 = inst2.x1, inst2.y1
-                            
-                            if y1 and y2:
-                                # Закрашиваем область от верхнего-левого края первого ключевого слова до нижнего края второго (до границы страницы справа)
-                                rect_to_redact = fitz.Rect(x1-80, y1-15, page.rect.width, y2-30)
-                                page.draw_rect(rect_to_redact, color=(1, 1, 1), fill=1)
+                if text_instances0:
+                    inst0 = text_instances0[0]
+                    # Координаты первого ключевого слова
+                    x0, y0 = inst0.x0, inst0.y0 # Левый верхний угол границы слова
 
+                    # Ограничиваем область поиска второго ключевого слова
+                    search_area = fitz.Rect(0, y0, page.rect.width, page.rect.height)
+                    text_instances1 = page.search_for(KEYWORD12, clip=search_area)
 
-                page_number += 1  # Переходим к следующей странице
+                    if text_instances1:
+                        inst1 = text_instances1[0]  # Берем первое совпадение
+                        y1 = inst1.y0 # Верхняя граница слова
 
-            # Сохраняем изменения в новый файл PDF
-            doc.save(output_pdf)  # Сохраняем результат в новый файл
+                        if y0 and y1:
+                            # Закрашиваем область
+                            rect_to_redact = fitz.Rect(x0, y0, page.rect.width, y1-8)
+                            page.draw_rect(rect_to_redact, color=(1, 1, 1), fill=1)
 
+            doc.save(output_pdf, deflate=True)
 
     except Exception as e:
-        pass
+        print(f"Error in s7 with file {file_path}: {e}")
 
-################################################################################################################ S7
+################################################################################################################ Мой Агент
+"""
+- Если на одной странице KEYWORD9 и KEYWORD10, закрашивает текст от KEYWORD9 до конца страницы.
+- Если на странице только KEYWORD10, удаляет эту страницу.
+- Закрашивает текст между KEYWORD7 и KEYWORD8.
+"""
+import fitz
 
-def agent(file_path, output_pdf, KEYWORD9, KEYWORD7, KEYWORD8, KEYWORD10):
-    """
-    Оптимизированная функция для обработки PDF:
-    - Если на одной странице KEYWORD9 и KEYWORD10, закрашивает текст от KEYWORD10 до конца страницы.
-    - Если на странице только KEYWORD9, удаляет эту страницу.
-    - Закрашивает текст между KEYWORD7 и KEYWORD8.
-    """
+def agent(file_path, output_pdf, KEYWORD7, KEYWORD8, KEYWORD9, KEYWORD10):
     try:
-        # Открываем PDF документ
         with fitz.open(file_path) as doc:
-            pages_to_delete = []  # Список страниц для удаления
+            page_number = 0
 
-            for page_index in range(doc.page_count):
-                page = doc[page_index]
-                page_text = page.get_text()
+            while page_number < doc.page_count:  # Итерация по страницам документа
+                page = doc.load_page(page_number)  # Загружаем страницу
 
-                # Проверка на наличие ключевых слов на странице
-                has_keyword9 = KEYWORD9 in page_text
-                has_keyword10 = KEYWORD10 in page_text
+                # Ищем ключевые слова с помощью search_for
+                text_instances0 = page.search_for(KEYWORD9)
 
-                if has_keyword9 and has_keyword10:
-                    # Закрашиваем область от KEYWORD10 до конца страницы
- 
-                    for start in page.search_for(KEYWORD10):
-                        area = fitz.Rect(0, start.y1, page.rect.width, page.rect.height)
+                if text_instances0:
+                    y0 = text_instances0[0].y0
+                    search_area = fitz.Rect(0, y0, page.rect.width, page.rect.height)
+                    text_instances1 = page.search_for(KEYWORD10)
+
+                    # Закрашиваем область от KEYWORD9 до конца страницы
+                    if text_instances1:
+                        y0 = text_instances0[0].y0 # Левая верхняя граница слова
+                        area = fitz.Rect(0, y0, page.rect.width, page.rect.height)
                         page.draw_rect(area, color=(1, 1, 1), fill=1)
 
-                elif has_keyword9:
-                    # Удаляем страницу, если только KEYWORD9
-                    pages_to_delete.append(page_index)
+                # Удаляем страницу, если только KEYWORD10 присутствует
+                if not text_instances0:
+                    doc.delete_page(page_number)
+                    continue  # Переходим к следующей странице, так как эта удалена
 
                 # Поиск и закрашивание областей между KEYWORD7 и KEYWORD8
-                start_instances = page.search_for(KEYWORD7)
-                end_instances = page.search_for(KEYWORD8) if KEYWORD8 else []
+                text_instances2 = page.search_for(KEYWORD7)
 
-                for start in start_instances:
-                    y_start = start.y1
-                    for end in end_instances:
-                        y_end = end.y1
-                        if y_start < y_end:
-                            area = fitz.Rect(0, y_start + 3, page.rect.width, y_end)
-                            page.draw_rect(area, color=(1, 1, 1), fill=1)
+                if text_instances2:
+                    y2 = text_instances2[0].y1  # Нижняя граница KEYWORD7
+                    search_area = fitz.Rect(0, y2, page.rect.width, page.rect.height)
+                    text_instances3 = page.search_for(KEYWORD8, clip=search_area)
+                    y3 = text_instances3[0].y0  # Верхняя граница KEYWORD8
 
-            # Удаление страниц
-            if pages_to_delete:
-                doc.delete_pages(pages_to_delete)
+                    # Закрашиваем область между ними
+                    if text_instances3:
+                        area = fitz.Rect(0, y2, page.rect.width, y3)
+                        page.draw_rect(area, color=(1, 1, 1), fill=1)
 
-            # Сохранение результата
-            doc.save(output_pdf)
+                # Переход к следующей странице
+                page_number += 1
+
+            # Сохраняем обработанный PDF
+            doc.save(output_pdf, deflate=True)
 
     except Exception as e:
-        pass
-
+        print(f"Error: {e}")
 
 ################################################################################################################ ТКП
 
-def tkp(file_path, output_pdf, KEYWORD1, KEYWORD2):    
+def tkp(file_path, output_pdf, KEYWORD1, KEYWORD2):
     try:
         with fitz.open(file_path) as doc:
-            for page_number in range(doc.page_count):
-                page = doc[page_number]
-                
-                # Поиск первого и второго ключевых слов
+            for page_number in range(doc.page_count):  # Итерация по страницам документа
+                page = doc.load_page(page_number) # Итерируем по страницам
+                # Поиск первого ключевого слова
                 text_instances1 = page.search_for(KEYWORD1)
-                text_instances2 = page.search_for(KEYWORD2)
+                if text_instances1:
+                    y1 = text_instances1[0].y0  # Нижняя граница первого ключевого слова
 
-                if not text_instances1 or not text_instances2:
-                    continue
+                    # Для второго ключевого слова ищем только ниже первого
+                    search_area = fitz.Rect(0, y1, page.rect.width, page.rect.height)
+                    text_instances2 = page.search_for(KEYWORD2, clip=search_area)
 
-                # Закрашивание областей между найденными ключевыми словами
-                y1 = min(inst.y1 for inst in text_instances1)
-                y2 = max(inst.y1 for inst in text_instances2)
-                
-                if y1 < y2:  # Проверяем корректность границ
-                    rect_to_redact = fitz.Rect(0, y1 - 10, page.rect.width, y2 + 5)
-                    page.draw_rect(rect_to_redact, color=(1, 1, 1), fill=1)
+                    if text_instances2:
+                        y2 = text_instances2[0].y1  # Нижняя граница второго ключевого слова
+
+                        # Закрашиваем область от первого ключевого слова до второго
+                        rect_to_redact = fitz.Rect(0, y1, page.rect.width, y2+5)
+                        page.draw_rect(rect_to_redact, color=(1, 1, 1), fill=1)
 
             # Сохраняем изменения
-            doc.save(output_pdf)
-    
+            doc.save(output_pdf, deflate=True)
+
     except Exception as e:
-        pass
+        print(f"Error: {e}")
+
 
 ########################################################################################################################## Ваучер
 
-# Функция для поиска ключевых слов и удаления текста (закрашивания) между ними
 def vaucher(file_path, output_pdf, image_path, image_path2, KEYWORD3, KEYWORD4):
-
     try:
         with fitz.open(file_path) as doc:
             for page_number in range(doc.page_count):  # Итерация по страницам документа
                 page = doc.load_page(page_number)
 
-                # Поиск первого и второго ключевых слов
+                # Поиск первого ключевого слова (KEYWORD3)
                 text_instances1 = page.search_for(KEYWORD3)
-                text_instances2 = page.search_for(KEYWORD4)
+                if text_instances1:
+                    # Берем верхнюю границу первого ключевого слова
+                    y1 = text_instances1[0].y0  # Нижняя граница первого ключевого слова
 
-                # Пропускаем страницу, если любое из ключевых слов не найдено
-                if not text_instances1 or not text_instances2:
-                    continue
+                    # Для второго ключевого слова (KEYWORD4) ищем только ниже первого ключевого слова
+                    search_area = fitz.Rect(0, y1, page.rect.width, page.rect.height)
+                    text_instances2 = page.search_for(KEYWORD4, clip=search_area)
 
-                # Берем верхнюю границу первого ключевого слова и нижнюю второго
-                y1 = min(inst.y1 for inst in text_instances1)
-                y2 = max(inst.y1 for inst in text_instances2)
+                    if text_instances2:
+                        # Берем нижнюю границу второго ключевого слова
+                        y2 = text_instances2[0].y1
 
-                # Проверяем корректность границ
-                if y1 >= y2:
-                    continue
+                        # Закрашивание области сверху страницы до первого ключевого слова
+                        page.draw_rect(fitz.Rect(0, 0, page.rect.width, y1), color=(1, 1, 1), fill=1)
+                        # Закрашивание области от второго ключевого слова до конца страницы
+                        page.draw_rect(fitz.Rect(0, y2 + 20, page.rect.width, page.rect.height), color=(1, 1, 1), fill=1)
 
-                # Закрашивание области сверху страницы до первого ключевого слова
-                page.draw_rect(fitz.Rect(0, 0, page.rect.width, y1 - 20), color=(1, 1, 1), fill=1)
-                # Закрашивание области от второго ключевого слова до конца страницы
-                page.draw_rect(fitz.Rect(0, y2 + 20, page.rect.width, page.rect.height), color=(1, 1, 1), fill=1)
-
-                # Вставка изображений
-                page.insert_image(fitz.Rect(386, 36, 559, 69), filename=image_path)  # Координаты изображения 1
-                page.insert_image(fitz.Rect(36, 78, 551, 79), filename=image_path2)  # Координаты изображения 2
+                        # Вставка изображений
+                        page.insert_image(fitz.Rect(386, 36, 559, 69), filename=image_path)  # Координаты изображения 1
+                        page.insert_image(fitz.Rect(36, 78, 551, 79), filename=image_path2)  # Координаты изображения 2
 
             # Сохранение документа
-            doc.save(output_pdf)
+            doc.save(output_pdf, deflate=True)
+
     except Exception as e:
-        pass
+        print(f"Error: {e}")
+
 ################################################################################################################ РЖД
 
+import fitz
+
 def rzd(file_path, output_pdf, KEYWORD5, KEYWORD6):
-    
     try:
-        # Открытие PDF документа
         with fitz.open(file_path) as doc:
             page_number = 0
+
             while page_number < doc.page_count:
                 page = doc.load_page(page_number)
-                page_text = page.get_text()  # Получаем текст страницы один раз
 
                 # Проверяем наличие строки "Квитанция об оплате / Payment receipt"
-                if "Квитанция об оплате / Payment receipt" in page_text:
+                if page.search_for("Квитанция об оплате / Payment receipt"):
                     doc.delete_page(page_number)  # Удаляем страницу
-                    continue  # Переходим к следующей странице
+                    continue  # Переходим к следующей странице, так как эта удалена
 
-                # Ищем оба ключевых слова
+                # Ищем первое ключевое слово
                 text_instances1 = page.search_for(KEYWORD5)
-                text_instances2 = page.search_for(KEYWORD6)
+                if text_instances1:
+                    y1 = text_instances1[0].y0  # Нижняя граница первого ключевого слова
 
-                if text_instances1 and text_instances2:
-                    
-                    for inst1 in text_instances1:
-                        for inst2 in text_instances2:
-                            # Если ключевые слова найдены, определяем их координаты
-                            x1, y1 = inst1.x1, inst1.y1
-                            x2, y2 = inst2.x1, inst2.y1
-                            
-                            if y1 and y2:
-                                # Закрашиваем область от верхнего-левого края первого ключевого слова до нижнего края второго (до границы страницы справа)
-                                rect_to_redact = fitz.Rect(x1-22, y1-10, page.rect.width, y2)
-                                page.draw_rect(rect_to_redact, color=(1, 1, 1), fill=1)
+                    # Ищем второе ключевое слово только ниже первого
+                    search_area = fitz.Rect(0, y1, page.rect.width, page.rect.height)
+                    text_instances2 = page.search_for(KEYWORD6, clip=search_area)
 
-                page_number += 1  # Переходим к следующей странице
+                    if text_instances2:
+                        y2 = text_instances2[0].y1  # Нижняя граница второго ключевого слова
 
-            # Сохраняем изменения в новый файл PDF
-            doc.save(output_pdf)  # Сохраняем результат в новый файл
+                        # Закрашиваем область от первого до второго ключевого слова
+                        rect_to_redact = fitz.Rect(0, y1, page.rect.width, y2-1)
+                        page.draw_rect(rect_to_redact, color=(1, 1, 1), fill=1)
+
+                # Переход к следующей странице
+                page_number += 1
+
+            # Сохраняем изменения
+            doc.save(output_pdf, deflate=True)
 
     except Exception as e:
-        pass
+        print(f"Error: {e}")
     
 ################################################################################################################
 
@@ -255,15 +259,13 @@ def find_keywords_in_pdf(file_path, output_pdf, keyword_actions):
             compiled_pattern = re.compile(keywords_pattern, re.IGNORECASE)
 
             # Проверяем только первую страницу
-            if len(doc) > 0:
-                page = doc[0]
-                text = page.get_text()
-                match = compiled_pattern.search(text)
-                if match:
-                    keyword = match.group()
-                    print(f"Найдено ключевое слово '{keyword}' на первой странице")
-                    # Выполнение действия без преобразования регистра (улучшение)
-                    keyword_actions[keyword](file_path, output_pdf)
+            page = doc[0].get_text()
+            match = compiled_pattern.search(page)
+            if match:
+                keyword = match.group()
+                print(f"Найдено ключевое слово '{keyword}' на первой странице")
+                # Выполнение действия без преобразования регистра (улучшение)
+                keyword_actions[keyword](file_path, output_pdf)
 
     except Exception as e:
         print(f"Ошибка при обработке PDF: {e}")
@@ -310,7 +312,7 @@ async def handle_pdf(update: Update, context: CallbackContext):
         
         # Отправляем результат пользователю
         with open(output_pdf, 'rb') as f:
-            await update.message.reply_document(f, caption="Вот твой обработанный PDF.")
+            await update.message.reply_document(f, caption="")
 
         # Удаляем временные файлы
         f.close()
